@@ -1,0 +1,81 @@
+services:
+  backend_service:
+    build:
+      context: .
+      dockerfile: ./containers/production/nginx/Dockerfile
+    restart: unless-stopped
+    volumes:
+      - laravel-storage-production:/var/www/storage:ro
+    networks:
+      - easy_crm_production
+    ports:
+      - "8000:80"
+    depends_on:
+      - backend_app:
+        condition: service_healthy
+  backend_app:
+    build:
+      context: .
+      dockerfile: ./containers/production/php_fpm/Dockerfile
+      target: production
+    restart: unless-stopped
+    volumes:
+      - laravel-storage-production:/var/www/storage
+    env_file:
+      - ./backend/.env
+    networks:
+      - easy_crm_production
+    healthcheck:
+      test: ["CMD-SHELL", "php-fpm-healthcheck || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      backend_database:
+        condition: service_healthy
+  backend_cli:
+    build:
+      context: .
+      dockerfile: ./containers/production/php_cli/Dockerfile
+    tty: true
+    stdin_open: true
+    env_file:
+      - ./backend/.env
+    networks:
+      - easy_crm_production
+  backend_database:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    user: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres-data-production:/var/lib/postgresql
+    networks:
+      - easy_crm_production
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+  backend_redis:
+    image: redis:alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - easy_crm_production
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+networks:
+  easy_crm_production:
+volumes:
+  postgres-data-production:
+  laravel-storage-production:
