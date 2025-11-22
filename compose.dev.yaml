@@ -1,0 +1,82 @@
+services:
+  backend_service:
+    image: nginx:alpine
+    volumes:
+      - ./backend:/srv/backend:z
+      - ./containers/production/nginx/default.conf:/etc/nginx/conf.d/default.conf:z
+    ports:
+      - "8000:80"
+    networks:
+      - easy_crm_development
+    depends_on:
+      backend_app:
+        condition: service_started
+  backend_app:
+    build:
+      context: .
+      dockerfile: ./containers/development/php_fpm/Dockerfile
+      args:
+        UID: 1000
+        GID: 1000
+        XDEBUG_ENABLED: ${XDEBUG_ENABLED:-true}
+        XDEBUG_MODE: develop,coverage,debug,profile
+        XDEBUG_HOST: ${XDEBUG_HOST:-host.docker.internal}
+        XDEBUG_LOG: /dev/stdout
+        XDEBUG_LOG_LEVEL: 0
+    volumes:
+      - ./backend:/srv/backend:z
+    networks:
+      - easy_crm_development
+    depends_on:
+      backend_database:
+        condition: service_started
+  backend_cli:
+    build:
+      context: .
+      dockerfile: ./containers/development/php_cli/Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+        XDEBUG_ENABLED: ${XDEBUG_ENABLED:-true}
+        XDEBUG_MODE: develop,coverage,debug,profile
+        XDEBUG_HOST: ${XDEBUG_HOST:-host.docker.internal}
+        XDEBUG_LOG: /dev/stdout
+        XDEBUG_LOG_LEVEL: 0
+    tty: true
+    stdin_open: true
+    volumes:
+      - ./backend:/srv/backend:z
+    networks:
+      - easy_crm_development
+  backend_database:
+    image: postgres:18-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: easy_crm
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres-data-development:/var/lib/postgresql
+    networks:
+      - easy_crm_development
+  backend_redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - easy_crm_development
+  frontend_app:
+    build:
+      context: .
+      dockerfile: ./containers/development/frontend/Dockerfile
+    volumes:
+      - ./frontend:/srv/frontend:z
+    ports:
+      - "4200:4200"
+    networks:
+      - easy_crm_development
+networks:
+  easy_crm_development:
+volumes:
+  postgres-data-development:
