@@ -3,7 +3,7 @@ FROM php:8.4.14-cli-alpine AS builder
 RUN apk add --no-cache \
     curl \
     unzip \
-    libpq \
+    libpq-dev \
     openssl \
     libxml2-dev \
     libcurl \
@@ -31,7 +31,7 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 FROM php:8.4.14-cli-alpine
 
 RUN apk add --no-cache \
-    libpq \
+    libpq-dev \
     icu-dev \
     libzip-dev \
     && apk cache clean && apk del --purge $(apk info -a | awk '{print $1}' | sort | uniq -u) && rm -rf /var/cache/apk/* && rm -rf /tmp/*

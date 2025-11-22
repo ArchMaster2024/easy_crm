@@ -1,19 +1,23 @@
-FROM php:8.4.14-cli-alpine
+FROM php:8.4.14-cli
 
 ARG UID=1000
-ARG GUI=1000
+ARG GID=1000
 ARG NODE_VERSION=22.21.1
 
-RUN apk add --no-cache \
+RUN apt update && apt install -y \
     curl \
     unzip \
-    libpq \
-    openssl \
+    libpq-dev \
+    libssl-dev \
     libxml2-dev \
-    libcurl \
-    icu-dev \
+    libcurl4-openssl-dev \
+    libicu-dev \
     libzip-dev \
+    libfreetype-dev \
+    libjpeg62-turbo-dev \
+    libpng-dev \
     && docker-php-ext-install -j$(nproc) \
+    gd \
     pdo_pgsql \
     pgsql \
     opcache \
@@ -23,7 +27,7 @@ RUN apk add --no-cache \
     soap \
     && pecl install redis \
     && docker-php-ext-enable redis \
-    && apk cache clean && apk del --purge $(apk info -a | awk '{print $1}' | sort | uniq -u) && rm -rf /var/cache/apk/* && rm -rf /tmp/*
+    && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 ARG XDEBUG_ENABLED
 ARG XDEBUG_MODE
@@ -50,17 +54,15 @@ RUN if getent group ${GID}; then \
     usermod -aG sudo www && \
     echo 'www ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
-USER www
-
 RUN export NVM_DIR="$HOME/.nvm" && \
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash && \
-    [ -s "$NVIM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && \
+    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && \
     nvm install ${NODE_VERSION} && \
     nvm alias default ${NODE_VERSION} && \
     nvm use default
 
 RUN echo 'export NVM_DIR="$HOME/.nvm"' >> /home/www/.bashrc && \
-    echo '[ -s "NVM_DIR/nvm.sh" ] && \. "NVM_DIR/nvm.sh"' >> /home/www/.bashrc && \
+    echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> /home/www/.bashrc && \
     echo '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"' >> /home/www/.bashrc
 
 WORKDIR /srv/backend

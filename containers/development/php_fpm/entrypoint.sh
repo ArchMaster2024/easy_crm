@@ -1,19 +1,15 @@
 #!/bin/bash
 
-cd /srv/backend
-
 echo "Check if project exists"
 
-if [[ ! -d "app" ]]; then
+if [[ ! -d "/srv/backend/app" ]]; then
     echo "Project does not exist, proceeding to create it"
 
-    composer create-project --prefer-dist laravel/laravel example-app
-
-    rm example-app/README.md
+    composer create-project --prefer-dist laravel/laravel /srv/backend/example_app
     
-    mv example-app/{*,.*} ./
+    mv /srv/backend/example_app/{*,.*} /srv/backend
 
-    rm -rf example-app
+    rm -rf /srv/backend/example_app
 
     echo "Project created"
 else
@@ -22,49 +18,43 @@ fi
 
 echo "Check if .env file exists"
 
-if [[ ! -f ".env" ]]; then
+if [[ ! -f "/srv/backend/.env" ]]; then
     echo "File does not exist, proceeding to create it"
 
-    cp .env.example .env
+    cp /srv/backend/.env.example /srv/backend/.env
 
     echo "File created"
 
     echo "Prepare database configuration"
 
-    sed -i 's/DB_CONNECTION=sqlite/DB_CONNECTION=pgsql/' .env
-    sed -i 's/# DB_HOST=127.0.0.1/DB_HOST=backend_database/' .env
-    sed -i 's/# DB_PORT=3306/DB_PORT=5432/' .env
-    sed -i 's/# DB_DATABASE=laravel/DB_DATABASE=easy_crm/' .env
-    sed -i 's/# DB_USERNAME=root/DB_USERNAME=postgres/' .env
-    sed -i 's/# DB_PASSWORD=/DB_PASSWORD=postgres/' .env
+    sed -i 's/DB_CONNECTION=sqlite/DB_CONNECTION=pgsql/' /srv/backend/.env
+    sed -i 's/# DB_HOST=127.0.0.1/DB_HOST=backend_database/' /srv/backend/.env
+    sed -i 's/# DB_PORT=3306/DB_PORT=5432/' /srv/backend/.env
+    sed -i 's/# DB_DATABASE=laravel/DB_DATABASE=easy_crm/' /srv/backend/.env
+    sed -i 's/# DB_USERNAME=root/DB_USERNAME=postgres/' /srv/backend/.env
+    sed -i 's/# DB_PASSWORD=/DB_PASSWORD=postgres/' /srv/backend/.env
 
     echo "Database configuration prepared"
 
     echo "Generate app key"
 
-    php artisan key:generate
+    php /srv/backend/artisan key:generate
 
     echo "App key generated"
 
     echo "Loading migrations"
 
-    php artisan migrate
+    php /srv/backend/artisan migrate
 else
     echo "File exists"
 fi
 
 echo "Setting permissions"
 
-chown -R storage
-chown -R bootstrap/cache
+chown -R www:www /srv/backend/storage
+chown -R www:www /srv/backend/bootstrap/cache
 
 echo "Permissions set"
-
-echo "Check if php-fpm is running"
-
-php-fpm-healthcheck
-
-echo $?
 
 echo "Start the php-fpm server"
 

@@ -17,7 +17,6 @@ services:
     build:
       context: .
       dockerfile: ./containers/production/php_fpm/Dockerfile
-      target: production
     restart: unless-stopped
     volumes:
       - laravel-storage-production:/var/www/storage

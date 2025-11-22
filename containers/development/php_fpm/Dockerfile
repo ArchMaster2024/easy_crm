@@ -1,12 +1,42 @@
-FROM production AS development
+FROM php:8.4.14-fpm
+
+RUN apt update && apt install -y \
+    curl \
+    unzip \
+    libpq-dev \
+    libssl-dev \
+    libxml2-dev \
+    libcurl4-openssl-dev \
+    libicu-dev \
+    libzip-dev \
+    libfreetype-dev \
+    libjpeg62-turbo-dev \
+    libpng-dev \
+    && docker-php-ext-install -j$(nproc) \
+    gd \
+    pdo \
+    pdo_pgsql \
+    pgsql \
+    opcache \
+    intl \
+    zip \
+    bcmath \
+    soap \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && apt-get autoremove -y && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+WORKDIR /srv/backend
+
+COPY ./backend /srv/backend
+
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 ARG XDEBUG_ENABLED=true
 ARG XDEBUG_MODE=develop,coverage,debug,profile
 ARG XDEBUG_HOST=host.docker.internal
 ARG XDEBUG_LOG=/dev/stdout
 ARG XDEBUG_LOG_LEVEL=0
-
-USER root
 
 RUN if [ "${XDEBUG_ENABLED}" = "true" ]; then \
     pecl install xdebug && \
@@ -19,7 +49,7 @@ RUN if [ "${XDEBUG_ENABLED}" = "true" ]; then \
 fi
 
 ARG UID=1000
-ARG GUI=1000
+ARG GID=1000
 
 RUN if getent group ${GID}; then \
         group_name=$(getent group ${GID} | cut -d: -f1); \
@@ -33,12 +63,8 @@ RUN if getent group ${GID}; then \
 RUN sed -i "s/user = www-data/user = www/g" /usr/local/etc/php-fpm.d/www.conf && \
     sed -i "s/group = wwww-data/group = $group_name/g" /usr/local/etc/php-fpm.d/www.conf
 
-WORKDIR /srv/backend
-
-COPY ./container/development/php_fpm/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY ./containers/development/php_fpm/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
-
-USER www-data
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
